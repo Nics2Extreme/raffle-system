@@ -1,0 +1,69 @@
+@import 'tailwindcss';
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@theme {
+    --font-sans:
+        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+    --font-display: 'Bebas Neue', Impact, Haettenschweiler, sans-serif;
+    --spacing-18: 4.5rem;
+    --color-stage: #0b1520;
+    --color-stage-panel: #0f1c27;
+    --color-stage-border: #2a4558;
+    --color-gold: #f0d78c;
+    --color-gold-bright: #ffe6a3;
+    --color-mist: #c8d6df;
+    --color-mist-dim: #9eb3c0;
+}
+
+@keyframes reel-roll {
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(-70rem);
+    }
+}
+
+/* Continuous from → to; deceleration comes from the easing curve. */
+@keyframes reel-land {
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(var(--reel-land-to, -280rem));
+    }
+}
+
+@keyframes fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slot-confetti-fall {
+    0% {
+        opacity: 1;
+        transform: translateY(0) rotate(0deg);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(110vh) rotate(540deg);
+    }
+}
+
+.slot-confetti {
+    animation: slot-confetti-fall 1.8s ease-in forwards;
+}
