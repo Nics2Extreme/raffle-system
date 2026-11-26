@@ -3,15 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Actions\CreateLatecomerAction;
-use App\Actions\ImportAttendanceAction;
 use App\Actions\ImportParticipantsAction;
-use App\Actions\SyncAttendanceFromGoogleSheetAction;
-use App\Http\Requests\ImportAttendanceRequest;
+use App\Actions\ImportPrizesAction;
 use App\Http\Requests\ImportParticipantsRequest;
+use App\Http\Requests\ImportPrizesRequest;
 use App\Http\Requests\StoreLatecomerRequest;
-use App\Http\Requests\SyncAttendanceRequest;
-use App\Models\AttendanceSetting;
 use App\Models\Participant;
+use App\Models\Prize;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -25,20 +23,11 @@ class ParticipantController extends Controller
     public function index(Request $request): Response
     {
         $filter = $request->string('filter')->toString();
-        $settings = AttendanceSetting::current();
 
         $participants = Participant::query()
             ->with('draw')
             ->when($filter === 'eligible', fn ($query) => $query->eligible())
-            ->when($filter === 'registered', fn ($query) => $query
-                ->where('privacy_agreed', true)
-                ->where('attended', false)
-                ->whereDoesntHave('draw'))
-            ->when($filter === 'absent', fn ($query) => $query
-                ->where('privacy_agreed', true)
-                ->where('attended', false))
             ->when($filter === 'won', fn ($query) => $query->whereHas('draw'))
-            ->when($filter === 'declined', fn ($query) => $query->where('privacy_agreed', false))
             ->orderBy('full_name')
             ->paginate(25)
             ->withQueryString()
@@ -47,10 +36,22 @@ class ParticipantController extends Controller
                 'full_name' => $participant->full_name,
                 'employee_number' => $participant->employee_number,
                 'privacy_agreed' => $participant->privacy_agreed,
-                'attended' => $participant->attended,
                 'source' => $participant->source->value,
                 'has_won' => $participant->draw !== null,
                 'status' => $this->statusFor($participant),
+            ]);
+
+        $prizes = Prize::query()
+            ->orderByDesc('remaining')
+            ->orderByRaw("CASE WHEN type = 'minor' THEN 0 ELSE 1 END")
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Prize $prize): array => [
+                'id' => $prize->id,
+                'name' => $prize->name,
+                'quantity' => $prize->quantity,
+                'remaining' => $prize->remaining,
+                'type' => $prize->type->value,
             ]);
 
         return Inertia::render('participants/index', [
@@ -59,23 +60,9 @@ class ParticipantController extends Controller
             'stats' => [
                 'total' => Participant::query()->count(),
                 'eligible' => Participant::query()->eligible()->count(),
-                'registered' => Participant::query()
-                    ->where('privacy_agreed', true)
-                    ->where('attended', false)
-                    ->whereDoesntHave('draw')
-                    ->count(),
-                'present' => Participant::query()->where('attended', true)->count(),
-                'absent' => Participant::query()
-                    ->where('privacy_agreed', true)
-                    ->where('attended', false)
-                    ->count(),
                 'won' => Participant::query()->whereHas('draw')->count(),
-                'declined' => Participant::query()->where('privacy_agreed', false)->count(),
             ],
-            'attendanceSettings' => [
-                'spreadsheet_id' => $settings->spreadsheet_id,
-                'sheet_range' => $settings->sheet_range,
-            ],
+            'prizes' => $prizes,
         ]);
     }
 
@@ -98,7 +85,7 @@ class ParticipantController extends Controller
 
         return redirect()
             ->route('participants.index')
-            ->with('success', 'Latecomer added and is eligible for the next draw.');
+            ->with('success', 'Participant added and is eligible for the next draw.');
     }
 
     public function import(
@@ -127,9 +114,9 @@ class ParticipantController extends Controller
             );
     }
 
-    public function importAttendance(
-        ImportAttendanceRequest $request,
-        ImportAttendanceAction $action,
+    public function importPrizes(
+        ImportPrizesRequest $request,
+        ImportPrizesAction $action,
     ): RedirectResponse {
         try {
             $result = $action->handle($request->file('file'));
@@ -141,7 +128,7 @@ class ParticipantController extends Controller
             report($exception);
 
             throw ValidationException::withMessages([
-                'file' => 'The attendance CSV could not be imported. Please check the file and try again.',
+                'file' => 'The prizes spreadsheet could not be imported. Please check the file and try again.',
             ]);
         }
 
@@ -149,36 +136,7 @@ class ParticipantController extends Controller
             ->route('participants.index')
             ->with(
                 'success',
-                "Attendance import: {$result['present']} present, {$result['absent']} absent, {$result['skipped']} skipped.",
-            );
-    }
-
-    public function syncAttendance(
-        SyncAttendanceRequest $request,
-        SyncAttendanceFromGoogleSheetAction $action,
-    ): RedirectResponse {
-        try {
-            $result = $action->handle(
-                $request->validated('spreadsheet_id'),
-                $request->validated('sheet_range'),
-            );
-        } catch (InvalidArgumentException $exception) {
-            throw ValidationException::withMessages([
-                'spreadsheet_id' => $exception->getMessage(),
-            ]);
-        } catch (Throwable $exception) {
-            report($exception);
-
-            throw ValidationException::withMessages([
-                'spreadsheet_id' => 'Google Sheet sync failed. Check credentials, sharing, and sheet range.',
-            ]);
-        }
-
-        return redirect()
-            ->route('participants.index')
-            ->with(
-                'success',
-                "Attendance sync: {$result['present']} present, {$result['absent']} absent, {$result['skipped']} skipped.",
+                "Prize import: {$result['imported']} added, {$result['updated']} updated, {$result['skipped']} skipped.",
             );
     }
 
@@ -186,14 +144,6 @@ class ParticipantController extends Controller
     {
         if ($participant->draw !== null) {
             return 'won';
-        }
-
-        if (! $participant->privacy_agreed) {
-            return 'declined';
-        }
-
-        if (! $participant->attended) {
-            return 'registered';
         }
 
         return 'eligible';

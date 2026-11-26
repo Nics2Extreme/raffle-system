@@ -4,8 +4,10 @@ namespace App\Console\Commands;
 
 use App\Actions\DrawWinnerAction;
 use App\Enums\ParticipantSource;
+use App\Enums\PrizeType;
 use App\Models\Draw;
 use App\Models\Participant;
+use App\Models\Prize;
 use App\Models\User;
 use App\Support\FairDrawSelector;
 use Illuminate\Console\Command;
@@ -33,12 +35,20 @@ class SimulateRaffleRoundsCommand extends Command
         $poolSize = max($rounds * $winnersPerRound, (int) $this->option('pool'));
         $totalDraws = $rounds * $winnersPerRound;
 
-        $this->warn('Clearing draws and participants…');
+        $this->warn('Clearing draws, prizes, and participants…');
         Draw::query()->delete();
+        Prize::query()->delete();
         Participant::query()->delete();
 
         $this->info("Seeding {$poolSize} eligible employees…");
         $this->seedEligiblePool($poolSize);
+
+        $prize = Prize::query()->create([
+            'name' => 'Simulation Prize',
+            'quantity' => $totalDraws,
+            'remaining' => $totalDraws,
+            'type' => PrizeType::Minor,
+        ]);
 
         $operator = User::query()->updateOrCreate(
             ['email' => (string) config('operator.email')],
@@ -62,7 +72,7 @@ class SimulateRaffleRoundsCommand extends Command
             $roundWinners = [];
 
             for ($slot = 1; $slot <= $winnersPerRound; $slot++) {
-                $draw = $drawWinner->handle($operator, "Round {$round} · Prize {$slot}");
+                $draw = $drawWinner->handle($operator, $prize);
 
                 $ratio = $draw->pool_count > 1
                     ? $draw->selected_index / ($draw->pool_count - 1)
@@ -110,8 +120,6 @@ class SimulateRaffleRoundsCommand extends Command
                 'full_name' => fake()->name(),
                 'employee_number' => str_pad((string) $number, 4, '0', STR_PAD_LEFT),
                 'privacy_agreed' => true,
-                'attended' => true,
-                'attended_at' => now(),
                 'source' => ParticipantSource::Import->value,
                 'created_at' => now(),
                 'updated_at' => now(),

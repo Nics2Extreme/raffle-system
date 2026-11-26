@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $participant_id
  * @property int $drawn_by
+ * @property int|null $prize_id
  * @property string|null $prize_label
  * @property string $algorithm
  * @property int $pool_count
@@ -24,10 +25,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonInterface|null $updated_at
  * @property-read Participant $participant
  * @property-read User $drawnBy
+ * @property-read Prize|null $prize
  */
 #[Fillable([
     'participant_id',
     'drawn_by',
+    'prize_id',
     'prize_label',
     'algorithm',
     'pool_count',
@@ -62,6 +65,14 @@ class Draw extends Model
     public function drawnBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'drawn_by');
+    }
+
+    /**
+     * @return BelongsTo<Prize, $this>
+     */
+    public function prize(): BelongsTo
+    {
+        return $this->belongsTo(Prize::class);
     }
 
     /**

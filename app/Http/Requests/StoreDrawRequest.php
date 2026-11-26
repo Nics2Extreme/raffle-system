@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreDrawRequest extends FormRequest
 {
@@ -12,12 +13,16 @@ class StoreDrawRequest extends FormRequest
     }
 
     /**
-     * @return array<string, array<int, string>>
+     * @return array<string, array<int, mixed>>
      */
     public function rules(): array
     {
         return [
-            'prize_label' => ['nullable', 'string', 'max:255'],
+            'prize_id' => [
+                'required',
+                'integer',
+                Rule::exists('prizes', 'id')->where(fn ($query) => $query->where('remaining', '>', 0)),
+            ],
         ];
     }
 }

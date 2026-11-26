@@ -8,11 +8,11 @@ test('winners can be filtered by search prize and operator', function () {
     $operatorA = User::factory()->create(['name' => 'Operator A']);
     $operatorB = User::factory()->create(['name' => 'Operator B']);
 
-    $alice = Participant::factory()->attended()->create([
+    $alice = Participant::factory()->create([
         'full_name' => 'Alice Winner',
         'employee_number' => '1111',
     ]);
-    $bob = Participant::factory()->attended()->create([
+    $bob = Participant::factory()->create([
         'full_name' => 'Bob Runner',
         'employee_number' => '2222',
     ]);

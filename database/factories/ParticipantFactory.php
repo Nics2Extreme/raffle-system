@@ -21,26 +21,8 @@ class ParticipantFactory extends Factory
             'full_name' => fake()->name(),
             'employee_number' => EmployeeNumber::normalize((string) fake()->unique()->numberBetween(1, 9999)),
             'privacy_agreed' => true,
-            'attended' => false,
-            'attended_at' => null,
             'source' => ParticipantSource::Import,
         ];
-    }
-
-    public function attended(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'attended' => true,
-            'attended_at' => now(),
-        ]);
-    }
-
-    public function absent(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'attended' => false,
-            'attended_at' => null,
-        ]);
     }
 
     public function declined(): static

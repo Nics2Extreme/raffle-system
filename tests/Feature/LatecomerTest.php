@@ -20,7 +20,6 @@ test('operators can add a latecomer who becomes immediately eligible', function 
         ->full_name->toBe('Late Arrival')
         ->employee_number->toBe('0042')
         ->privacy_agreed->toBeTrue()
-        ->attended->toBeTrue()
         ->source->toBe(ParticipantSource::Manual)
         ->and(Participant::query()->eligible()->count())->toBe(1);
 });

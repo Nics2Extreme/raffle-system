@@ -7,11 +7,11 @@ use App\Models\User;
 test('winners can be sorted by employee number ascending', function () {
     $operator = User::factory()->create();
 
-    $first = Participant::factory()->attended()->create([
+    $first = Participant::factory()->create([
         'employee_number' => '0100',
         'full_name' => 'Alpha',
     ]);
-    $second = Participant::factory()->attended()->create([
+    $second = Participant::factory()->create([
         'employee_number' => '0200',
         'full_name' => 'Bravo',
     ]);

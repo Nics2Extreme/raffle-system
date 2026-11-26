@@ -27,6 +27,9 @@ class WinnerController extends Controller
     {
         $sort = $request->string('sort')->toString();
         $direction = strtolower($request->string('direction')->toString()) === 'asc' ? 'asc' : 'desc';
+        $search = $request->string('search')->trim()->toString();
+        $prize = $request->string('prize')->trim()->toString();
+        $operatorId = $request->integer('operator_id') ?: null;
 
         if (! array_key_exists($sort, self::SORTABLE)) {
             $sort = 'drawn_at';
@@ -38,6 +41,15 @@ class WinnerController extends Controller
             ->join('participants', 'participants.id', '=', 'draws.participant_id')
             ->join('users', 'users.id', '=', 'draws.drawn_by')
             ->with(['participant', 'drawnBy'])
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($query) use ($search): void {
+                    $query
+                        ->where('participants.full_name', 'like', "%{$search}%")
+                        ->orWhere('participants.employee_number', 'like', "%{$search}%");
+                });
+            })
+            ->when($prize !== '', fn ($query) => $query->where('draws.prize_label', 'like', "%{$prize}%"))
+            ->when($operatorId !== null, fn ($query) => $query->where('draws.drawn_by', $operatorId))
             ->orderBy(self::SORTABLE[$sort], $direction)
             ->orderByDesc('draws.id')
             ->paginate(25)
@@ -60,6 +72,9 @@ class WinnerController extends Controller
             'filters' => [
                 'sort' => $sort,
                 'direction' => $direction,
+                'search' => $search,
+                'prize' => $prize,
+                'operator_id' => $operatorId,
             ],
         ]);
     }

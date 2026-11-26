@@ -43,12 +43,20 @@ class ImportParticipantsAction
 
                 $fullName = trim((string) ($row[$columns['full_name']] ?? ''));
                 $employeeNumber = EmployeeNumber::tryNormalize((string) ($row[$columns['employee_number']] ?? ''));
-                $privacyAgreed = $this->parsePrivacyConsent((string) ($row[$columns['privacy']] ?? ''));
 
-                if ($fullName === '' || $employeeNumber === null || $privacyAgreed === null) {
+                if ($fullName === '' || $employeeNumber === null) {
                     $skipped++;
 
                     continue;
+                }
+
+                $privacyAgreed = true;
+
+                if ($columns['privacy'] !== null) {
+                    $parsed = $this->parsePrivacyConsent((string) ($row[$columns['privacy']] ?? ''));
+                    if ($parsed !== null) {
+                        $privacyAgreed = $parsed;
+                    }
                 }
 
                 $participant = Participant::query()->firstOrNew([
@@ -83,7 +91,7 @@ class ImportParticipantsAction
 
     /**
      * @param  array<int, string|null>  $header
-     * @return array{full_name: int, employee_number: int, privacy: int}
+     * @return array{full_name: int, employee_number: int, privacy: int|null}
      */
     private function mapColumns(array $header): array
     {
@@ -111,9 +119,9 @@ class ImportParticipantsAction
             'privacy consent',
         ]);
 
-        if ($fullName === null || $employeeNumber === null || $privacy === null) {
+        if ($fullName === null || $employeeNumber === null) {
             throw new InvalidArgumentException(
-                'CSV must include Full Name, ID Number (or Employee No.), and Privacy Notice columns.',
+                'CSV must include Full Name and ID Number (or Employee No.) columns.',
             );
         }
 

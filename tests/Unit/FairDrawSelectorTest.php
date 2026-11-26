@@ -9,9 +9,9 @@ use Tests\TestCase;
 uses(TestCase::class, RefreshDatabase::class);
 
 test('selects by sorted employee number index using the provided rng', function () {
-    $first = Participant::factory()->attended()->create(['employee_number' => '0100']);
-    $second = Participant::factory()->attended()->create(['employee_number' => '0200']);
-    $third = Participant::factory()->attended()->create(['employee_number' => '0300']);
+    $first = Participant::factory()->create(['employee_number' => '0100']);
+    $second = Participant::factory()->create(['employee_number' => '0200']);
+    $third = Participant::factory()->create(['employee_number' => '0300']);
 
     $selector = new FairDrawSelector(fn (int $min, int $max): int => 1);
     $result = $selector->select(collect([$third, $first, $second]));
@@ -24,8 +24,8 @@ test('selects by sorted employee number index using the provided rng', function 
 });
 
 test('describePool publishes a deterministic hash for the current eligible list', function () {
-    Participant::factory()->attended()->create(['employee_number' => '0003']);
-    Participant::factory()->attended()->create(['employee_number' => '0001']);
+    Participant::factory()->create(['employee_number' => '0003']);
+    Participant::factory()->create(['employee_number' => '0001']);
 
     $selector = new FairDrawSelector;
     $description = $selector->describePool(

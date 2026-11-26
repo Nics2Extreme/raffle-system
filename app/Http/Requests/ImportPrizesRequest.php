@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class SyncAttendanceRequest extends FormRequest
+class ImportPrizesRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -17,8 +17,7 @@ class SyncAttendanceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'spreadsheet_id' => ['nullable', 'string', 'max:255'],
-            'sheet_range' => ['nullable', 'string', 'max:255'],
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv,txt', 'max:5120'],
         ];
     }
 }

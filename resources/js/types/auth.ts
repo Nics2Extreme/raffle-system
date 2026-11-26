@@ -19,5 +19,6 @@ export type Flash = {
         full_name: string;
         employee_number: string;
         prize_label: string | null;
+        prize_type?: 'major' | 'minor' | null;
     } | null;
 };

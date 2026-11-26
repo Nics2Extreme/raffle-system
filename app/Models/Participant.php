@@ -17,14 +17,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $full_name
  * @property string $employee_number
  * @property bool $privacy_agreed
- * @property bool $attended
- * @property CarbonInterface|null $attended_at
  * @property ParticipantSource $source
  * @property CarbonInterface|null $created_at
  * @property CarbonInterface|null $updated_at
  * @property-read Draw|null $draw
  */
-#[Fillable(['full_name', 'employee_number', 'privacy_agreed', 'attended', 'attended_at', 'source'])]
+#[Fillable(['full_name', 'employee_number', 'privacy_agreed', 'source'])]
 class Participant extends Model
 {
     /** @use HasFactory<ParticipantFactory> */
@@ -39,16 +37,15 @@ class Participant extends Model
     }
 
     /**
+     * Form registrants who have not yet won.
+     *
      * @param  Builder<Participant>  $query
      * @return Builder<Participant>
      */
     #[Scope]
     protected function eligible(Builder $query): Builder
     {
-        return $query
-            ->where('privacy_agreed', true)
-            ->where('attended', true)
-            ->whereDoesntHave('draw');
+        return $query->whereDoesntHave('draw');
     }
 
     /**
@@ -58,8 +55,6 @@ class Participant extends Model
     {
         return [
             'privacy_agreed' => 'boolean',
-            'attended' => 'boolean',
-            'attended_at' => 'datetime',
             'source' => ParticipantSource::class,
         ];
     }

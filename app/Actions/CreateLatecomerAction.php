@@ -26,8 +26,6 @@ class CreateLatecomerAction
             'full_name' => $data['full_name'],
             'employee_number' => $employeeNumber,
             'privacy_agreed' => true,
-            'attended' => true,
-            'attended_at' => now(),
             'source' => ParticipantSource::Manual,
         ]);
     }

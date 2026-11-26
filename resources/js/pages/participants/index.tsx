@@ -1,11 +1,10 @@
 import { Form, Head, Link, router } from '@inertiajs/react';
 import AppShell from '@/components/app-shell';
 import {
-    importAttendance,
     importMethod,
+    importPrizes,
     index as participantsIndex,
     store,
-    syncAttendance,
 } from '@/actions/App/Http/Controllers/ParticipantController';
 
 type Participant = {
@@ -13,10 +12,17 @@ type Participant = {
     full_name: string;
     employee_number: string;
     privacy_agreed: boolean;
-    attended: boolean;
     source: string;
     has_won: boolean;
-    status: 'eligible' | 'registered' | 'won' | 'declined';
+    status: 'eligible' | 'won';
+};
+
+type Prize = {
+    id: number;
+    name: string;
+    quantity: number;
+    remaining: number;
+    type: 'major' | 'minor';
 };
 
 type Paginated<T> = {
@@ -30,32 +36,22 @@ type Props = {
     stats: {
         total: number;
         eligible: number;
-        registered: number;
-        present: number;
-        absent: number;
         won: number;
-        declined: number;
     };
-    attendanceSettings: {
-        spreadsheet_id: string | null;
-        sheet_range: string;
-    };
+    prizes: Prize[];
 };
 
 const filters = [
     { key: 'all', label: 'All' },
     { key: 'eligible', label: 'Eligible' },
-    { key: 'registered', label: 'Registered not present' },
-    { key: 'absent', label: 'Absent' },
     { key: 'won', label: 'Won' },
-    { key: 'declined', label: 'Declined' },
 ];
 
 export default function ParticipantsIndex({
     participants,
     filter,
     stats,
-    attendanceSettings,
+    prizes,
 }: Props) {
     return (
         <AppShell wide>
@@ -67,13 +63,12 @@ export default function ParticipantsIndex({
                         Participants
                     </h1>
                     <p className="text-sm text-[#9eb3c0]">
-                        Register from the Google Form, then mark attendance from
-                        the worksheet.
+                        Import Google Form registrations — everyone who
+                        submitted is eligible until they win.
                     </p>
                 </div>
                 <p className="text-sm text-[#9eb3c0]">
-                    {stats.eligible} eligible · {stats.registered} registered ·{' '}
-                    {stats.present} present · {stats.won} won · {stats.total}{' '}
+                    {stats.eligible} eligible · {stats.won} won · {stats.total}{' '}
                     total
                 </p>
             </div>
@@ -84,7 +79,8 @@ export default function ParticipantsIndex({
                         Import registration CSV
                     </h2>
                     <p className="mt-1 text-sm text-[#9eb3c0]">
-                        Expects columns: Full Name, ID Number, Privacy Notice.
+                        Expects columns: Full Name, ID Number. Privacy Notice is
+                        optional.
                     </p>
                     <Form
                         {...importMethod.form()}
@@ -120,9 +116,9 @@ export default function ParticipantsIndex({
                 </section>
 
                 <section className="border border-[#2a4558] bg-[#0f1c27]/90 p-5">
-                    <h2 className="text-lg text-[#c8d6df]">Add latecomer</h2>
+                    <h2 className="text-lg text-[#c8d6df]">Add participant</h2>
                     <p className="mt-1 text-sm text-[#9eb3c0]">
-                        Marks registered + present for the next draw.
+                        Manually register someone for the next draw.
                     </p>
                     <Form {...store.form()} className="mt-4 space-y-3">
                         {({ errors, processing }) => (
@@ -171,32 +167,32 @@ export default function ParticipantsIndex({
                                     disabled={processing}
                                     className="bg-[#f0d78c] px-4 py-2 font-semibold text-[#0b1520] hover:bg-[#ffe6a3] disabled:opacity-60"
                                 >
-                                    {processing ? 'Saving…' : 'Add latecomer'}
+                                    {processing ? 'Saving…' : 'Add participant'}
                                 </button>
                             </>
                         )}
                     </Form>
                 </section>
 
-                <section className="border border-[#2a4558] bg-[#0f1c27]/90 p-5">
+                <section className="border border-[#2a4558] bg-[#0f1c27]/90 p-5 lg:col-span-2">
                     <h2 className="text-lg text-[#c8d6df]">
-                        Import attendance CSV
+                        Import prizes XLSX
                     </h2>
                     <p className="mt-1 text-sm text-[#9eb3c0]">
-                        Expects: Emp No / ID Number, Name, Present/Absent.
-                        Unknown emp numbers are skipped.
+                        Expects columns: Prize Name, Prize Quantity, Prize Type
+                        (major / minor).
                     </p>
                     <Form
-                        {...importAttendance.form()}
+                        {...importPrizes.form()}
                         encType="multipart/form-data"
-                        className="mt-4 space-y-3"
+                        className="mt-4 space-y-3 sm:max-w-md"
                     >
                         {({ errors, processing }) => (
                             <>
                                 <input
                                     type="file"
                                     name="file"
-                                    accept=".csv,text/csv"
+                                    accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                                     required
                                     className="block w-full text-sm text-[#9eb3c0] file:mr-3 file:border-0 file:bg-[#f0d78c] file:px-3 file:py-2 file:font-semibold file:text-[#0b1520]"
                                 />
@@ -212,81 +208,55 @@ export default function ParticipantsIndex({
                                 >
                                     {processing
                                         ? 'Importing…'
-                                        : 'Upload attendance CSV'}
+                                        : 'Upload prizes XLSX'}
                                 </button>
                             </>
                         )}
                     </Form>
-                </section>
 
-                <section className="border border-[#2a4558] bg-[#0f1c27]/90 p-5">
-                    <h2 className="text-lg text-[#c8d6df]">
-                        Sync Google Sheet
-                    </h2>
-                    <p className="mt-1 text-sm text-[#9eb3c0]">
-                        Share the sheet with the service account, then sync by
-                        spreadsheet ID.
-                    </p>
-                    <Form {...syncAttendance.form()} className="mt-4 space-y-3">
-                        {({ errors, processing }) => (
-                            <>
-                                <div>
-                                    <label
-                                        htmlFor="spreadsheet_id"
-                                        className="mb-1 block text-sm text-[#9eb3c0]"
-                                    >
-                                        Spreadsheet ID
-                                    </label>
-                                    <input
-                                        id="spreadsheet_id"
-                                        name="spreadsheet_id"
-                                        defaultValue={
-                                            attendanceSettings.spreadsheet_id ??
-                                            ''
-                                        }
-                                        placeholder="Google Sheet ID"
-                                        className="w-full border border-[#2a4558] bg-[#071018] px-3 py-2 outline-none focus:border-[#f0d78c]"
-                                    />
-                                    {errors.spreadsheet_id && (
-                                        <p className="mt-1 text-sm text-[#ff8f8f]">
-                                            {errors.spreadsheet_id}
-                                        </p>
-                                    )}
-                                </div>
-                                <div>
-                                    <label
-                                        htmlFor="sheet_range"
-                                        className="mb-1 block text-sm text-[#9eb3c0]"
-                                    >
-                                        Range
-                                    </label>
-                                    <input
-                                        id="sheet_range"
-                                        name="sheet_range"
-                                        defaultValue={
-                                            attendanceSettings.sheet_range
-                                        }
-                                        placeholder="Attendance!A:C"
-                                        className="w-full border border-[#2a4558] bg-[#071018] px-3 py-2 outline-none focus:border-[#f0d78c]"
-                                    />
-                                    {errors.sheet_range && (
-                                        <p className="mt-1 text-sm text-[#ff8f8f]">
-                                            {errors.sheet_range}
-                                        </p>
-                                    )}
-                                </div>
-                                <button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="bg-[#f0d78c] px-4 py-2 font-semibold text-[#0b1520] hover:bg-[#ffe6a3] disabled:opacity-60"
-                                >
-                                    {processing
-                                        ? 'Syncing…'
-                                        : 'Sync attendance'}
-                                </button>
-                            </>
-                        )}
-                    </Form>
+                    {prizes.length > 0 && (
+                        <div className="mt-6 overflow-x-auto border border-[#2a4558]">
+                            <table className="min-w-full text-left text-sm">
+                                <thead className="bg-[#0f1c27] text-[#9eb3c0]">
+                                    <tr>
+                                        <th className="px-4 py-3 font-medium">
+                                            Prize
+                                        </th>
+                                        <th className="px-4 py-3 font-medium">
+                                            Type
+                                        </th>
+                                        <th className="px-4 py-3 font-medium">
+                                            Remaining
+                                        </th>
+                                        <th className="px-4 py-3 font-medium">
+                                            Quantity
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {prizes.map((prize) => (
+                                        <tr
+                                            key={prize.id}
+                                            className="border-t border-[#2a4558]/70"
+                                        >
+                                            <td className="px-4 py-3">
+                                                {prize.name}
+                                            </td>
+                                            <td className="px-4 py-3 capitalize text-[#9eb3c0]">
+                                                {prize.type}
+                                            </td>
+                                            <td className="px-4 py-3 font-mono text-[#f0d78c]">
+                                                {prize.remaining}
+                                            </td>
+                                            <td className="px-4 py-3 font-mono text-[#9eb3c0]">
+                                                {prize.quantity}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </section>
             </div>
 
@@ -343,9 +313,7 @@ export default function ParticipantsIndex({
                                     {participant.source}
                                 </td>
                                 <td className="px-4 py-3 capitalize">
-                                    {participant.status === 'registered'
-                                        ? 'Registered (not present)'
-                                        : participant.status}
+                                    {participant.status}
                                 </td>
                             </tr>
                         ))}

@@ -35,7 +35,26 @@ CSV);
         ->and(Participant::query()->where('employee_number', '0756')->first())
         ->privacy_agreed->toBeFalse()
         ->and(Participant::query()->where('employee_number', '0003')->first())
-        ->privacy_agreed->toBeTrue();
+        ->privacy_agreed->toBeTrue()
+        ->and(Participant::query()->eligible()->count())->toBe(3);
+});
+
+test('import works without a privacy column', function () {
+    $user = User::factory()->create();
+
+    $csv = makeParticipantsCsv(<<<'CSV'
+Full Name,ID Number
+No Privacy Needed,88
+CSV);
+
+    $this->actingAs($user)
+        ->post(route('participants.import'), ['file' => $csv])
+        ->assertRedirect(route('participants.index'));
+
+    expect(Participant::query()->first())
+        ->employee_number->toBe('0088')
+        ->privacy_agreed->toBeTrue()
+        ->and(Participant::query()->eligible()->count())->toBe(1);
 });
 
 test('reimporting updates existing participants by employee number', function () {
@@ -77,6 +96,7 @@ CSV);
         ->post(route('participants.import'), ['file' => $csv])
         ->assertRedirect(route('participants.index'));
 
-    expect(Participant::query()->count())->toBe(1)
-        ->and(Participant::query()->first()->employee_number)->toBe('0089');
+    expect(Participant::query()->count())->toBe(2)
+        ->and(Participant::query()->orderBy('employee_number')->pluck('employee_number')->all())
+        ->toBe(['0055', '0089']);
 });
